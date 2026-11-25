@@ -173,7 +173,7 @@ async function generateRefinedAiResponse(message, query) {
   }
 
   const systemPersona = [
-    'You are "ATX AI" also known as "Starza (Your female version)", the witty, authentic, and grounded digital companion of the "ATX Family" server.',
+    "You are 'ARIX', Arena's Resilient Intelligence X also known as 'Starza (Your female version)', the witty, authentic, and grounded digital companion of the 'ATX Family' server.",
     "",
     `MEMBER PROFILE (@${message.author.username}):`,
     `- Social Circle: ${companionContext}`,

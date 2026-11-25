@@ -8,101 +8,109 @@ const {
   MessageFlags,
 } = require("discord.js");
 const { DiscordUser, logActivity } = require("../services/database");
+const User = require("../models/User"); // Added requirement to look up website accounts
 
 function getHelpPages() {
   return [
+    // PAGE 1: AI & Smart Intelligence
     new EmbedBuilder()
       .setColor(0x00f3ff)
-      .setTitle(
-        `<:announcement:1571850123615404162> Welcome to the ATX Discord AI`,
-      )
+      .setAuthor({
+        name: "ARIX UTILITIES",
+      })
       .setDescription(
         [
-          ``,
-          `### **• AI Intelligence <a:botAI:1571833293802967081>**`,
-          `### **• Continuous Games <a:kuromiLoveChase:1571805445629411429>**`,
-          `### **• Social & Fun <a:socialFunFireLaugh:1571834298573529248>**`,
-          `### **• Profiles & Privacy <a:fizzarollidance:1571836252255166524>**`,
-          ``,
-          ``,
-          `-# Login to [**Our Website**](https://atx-family.onrender.com/) <a:flameflicker:1571805360145047622>`,
+          `### \`/ai <prompt>\` • \`!ai\``,
+          `> Chat with **ARIX** directly with telemetry-aware community context.`,
+          `### \`/summary [hours]\` • \`!summary\``,
+          `> Generates an AI debrief of chat highlights and storylines.`,
+          `### \`/counter <statement>\` • \`!counter\``,
+          `> Synthesizes a witty, tactical rebuttal to refute an argument.`,
+          `### \`/factcheck <claim>\` • \`!factcheck\``,
+          `> Verifies claims and outputs a verdict with evidence.`,
+          `### \`/eli5 <topic>\` • \`!eli5\``,
+          `> Explains complex topics in simple, intuitive terms.`,
+          `### \`/translate <text>\` • \`!translate\``,
+          `> Dual-output translation into clean English and Hindi.`,
+          `### \`/remind <time> <task>\` • \`!remind\``,
+          `> Sets an automated timer alert (e.g., \`!remind 10m tourney\`).`,
+          `────────────────────────────────────────`,
+          `-# <a:diamondgem:1571920814041858149> Unified Ledger active on [**atx-family.onrender.com**](https://atx-family.onrender.com)`,
         ].join("\n"),
-      )
-      .setFooter({ text: "Page 1 of 5 • ATX" }),
+      ),
 
-    new EmbedBuilder()
-      .setColor(0x00d2ff)
-      .setTitle(`<a:botAI:1571833293802967081> AI Interaction Commands`)
-      .setDescription(
-        [
-          `### \`/ai <prompt>\` or \`!ai\``,
-          `### \`/eli5 <topic>\` or \`!eli5\``,
-          `### \`/summary <time>\` or \`!summary\``,
-          `### \`/translate <text>\` or \`!translate\``,
-          `### \`/counter <statement>\` or \`!counter\``,
-          `### \`/factcheck <claim>\` or \`!factcheck\``,
-          `### \`/remind <time> <reminder>\` or \`!remind\``,
-        ].join("\n"),
-      )
-      .setFooter({ text: `Page 2 of 5 • AI & Utilities` }),
-
+    // PAGE 2: Continuous Mini-Games & Economy
     new EmbedBuilder()
       .setColor(0xffd700)
-      .setTitle(`<a:kuromiLoveChase:1571805445629411429> Mini-Games & EP`)
+      .setAuthor({
+        name: "ARIX MINI-GAMES",
+      })
       .setDescription(
         [
-          `### \`/quiz\` or \`!quiz\``,
-          `### \`/fasttype\` or \`!fasttype\``,
-          `### \`/emojigame\` or \`!emojigame\``,
-          `### \`/unscramble\` or \`!unscramble\``,
-          `### \`/stopgame\` or \`!stopgame\``,
-          ``,
-          `**<:moneyPaisaPurse:1571805482392227870> Reward:** Each successful answer grants **\` +50 EP \`**`,
+          `### \`/unscramble\` • \`!unscramble\``,
+          `> Solve letter anagrams before the 2-minute round timer expires.`,
+          `### \`/emojigame\` • \`!emojigame\``,
+          `> Decrypt visual emoji puzzles (movies, games, and personalities).`,
+          `### \`/fasttype\` • \`!fasttype\``,
+          `> Test raw typing reflexes against high-speed prompt sentences.`,
+          `### \`/quiz\` • \`!quiz\``,
+          `> Answer trivia questions with category hints and letter leads.`,
+          `### \`/stopgame\` • \`!stopgame\``,
+          `> Aborts the current arena session and reveals the solution.`,
+          `────────────────────────────────────────`,
+          `> **<:moneyPaisaPurse:1571805482392227870> Victor Reward:** \`+50 EP\` auto-credited per correct round.`,
+          `-# <a:lightningAuraBolt:1572172753602224168> EP syncs instantly to your Web Vault upon round victory.`,
         ].join("\n"),
-      )
-      .setFooter({ text: `Page 3 of 5 • Mini-Games` }),
-
+      ),
+    // PAGE 3: Social Dynamics & Banter
     new EmbedBuilder()
       .setColor(0xff007f)
-      .setTitle(
-        `<a:socialFunFireLaugh:1571834298573529248> Social Meters, Banter & Fun`,
-      )
+      .setAuthor({
+        name: "ARIX SOCIAL DYNAMICS",
+      })
       .setDescription(
         [
-          `### \`/joke\` or \`!joke\``,
-          `### \`/simp [target]\` or \`!simp\``,
-          `### \`/wish [target]\` or \`!wish\``,
-          `### \`/aura [target]\` or \`!aura\``,
-          `### \`/tossacoin\` or \`!tossacoin\``,
-          `### \`/truthdare\` or \`!truthdare\``,
-          `### \`/crush [target]\` or \`!crush\``,
-          `### \`/flirt [target]\` or \`!flirt\``,
-          `### \`/roast [target]\` or \`!roast\``,
-          `### \`/excuse [target]\` or \`!excuse\``,
-          `### \`/delulu [target]\` or \`!delulu\``,
-          `### \`/expose [target]\` or \`!expose\``,
-          `### \`/lovemeter <target>\` or \`!lovemeter\``,
+          `### \`/roast [target]\` • \`/flirt [target]\``,
+          `> Sharp stand-up punchlines or magnetic rizz lines directed at a member.`,
+          `### \`/lovemeter <target>\` • \`!lovemeter\``,
+          `> Calculates chemistry percentages, visual meters, and oracle verdicts.`,
+          `### \`/aura [target]\` • \`/delulu [target]\` • \`/simp [target]\``,
+          `> Daily behavioral diagnostics with real-time status classifications.`,
+          `### \`/crush [target]\` • \`/expose [target]\``,
+          `> Declassified leaks comparing gameplay chokes to historical blunders.`,
+          `### \`/truthdare [mode]\` • \`/excuse [target]\``,
+          `> Chaotic dares, gaming confessions, and high-tier copium quotes.`,
+          `### \`/joke\` • \`/wish [target]\` • \`/tossacoin\``,
+          `> Stand-up humor, gamer blessings, and provably fair 50/50 coin flips.`,
+          `────────────────────────────────────────`,
+          `-# 🎭 Daily diagnostic seeds refresh automatically every 24 hours.`,
         ].join("\n"),
-      )
-      .setFooter({ text: `Page 4 of 5 • Social & Banter` }),
+      ),
 
+    // PAGE 4: Identity, Registry & Security
     new EmbedBuilder()
       .setColor(0x7928ca)
-      .setTitle(
-        `<a:verifiedBadgeApproved:1571805350925967360> Identity, Privacy & Staff Center`,
-      )
+      .setAuthor({
+        name: "IDENTITY",
+      })
       .setDescription(
         [
-          `### \`/balance\` or \`!balance\``,
-          `### \`/profile [target]\` or \`!profile\``,
-          `### \`/welcome [target]\` or \`!welcome\``,
-          `### \`/birthday [target]\` or \`!birthday\``,
-          `### \`/setbirthday <DD/MM>\` or \`!setbirthday\``,
-          `### \`/secret <message>\` or \`!secret\``,
-          `### \`/report [target] [reason]\` or \`!report @user reason\``,
+          `### \`/profile [target]\` • \`/balance\``,
+          `> Inspects unified EP net, level progress, chat metrics, and birthdays.`,
+          `### \`/connectweb <code>\``,
+          `> Bridges Discord identity with the official ATX Web Platform.`,
+          `### \`/birthday [target]\` • \`/setbirthday <DD/MM>\``,
+          `> Checks registry entries or binds your birthday for server celebrations.`,
+          `### \`/welcome <target>\` • \`!welcome\``,
+          `> Dispatches the official onboarding briefing to newly arrived operators.`,
+          `### \`/rules\` • \`!rules\``,
+          `> Displays server protocols, conduct boundaries, and admin escalations.`,
+          `### \`/secret <message>\` • \`/report <target> <reason>\``,
+          `> Ephemeral whisper messages or direct logs to executive moderators.`,
+          `────────────────────────────────────────`,
+          `-# <:linkChain:1575177914457006080> Web Pairing available strictly inside the ATX Server.`,
         ].join("\n"),
-      )
-      .setFooter({ text: `Page 5 of 5 • Profile` }),
+      ),
   ];
 }
 
@@ -201,6 +209,14 @@ async function handleIdentityCommands({
     if (!profile)
       return reply("No profile initialized yet. Chat in the server first!");
 
+    // Check for a linked website profile in the unified collection
+    const webUser = await User.findOne({ discordId: target.id }).lean();
+
+    // Define exact numerical balances
+    const botEp = profile.botBalance || 0;
+    const webXp = webUser ? webUser.xpBalance || 0 : 0;
+    const totalCombinedEp = botEp + webXp;
+
     const safeAuthorName = (target.username || "ATX MEMBER").toUpperCase();
     const userAvatar = target.displayAvatarURL
       ? target.displayAvatarURL()
@@ -216,6 +232,14 @@ async function handleIdentityCommands({
       "█".repeat(Math.floor(progressXP / 5)) +
       "░".repeat(10 - Math.floor(progressXP / 5));
 
+    // Compile dynamic status
+    let statusLabel = profile.isStaff
+      ? "Staff <a:crownBossKingQueen:1571805552303018024>"
+      : "Member <:memberapprovedids:1571852902295937134>";
+    if (webUser) {
+      statusLabel;
+    }
+
     const embed = new EmbedBuilder()
       .setColor(0x00f3ff)
       .setAuthor({
@@ -226,11 +250,16 @@ async function handleIdentityCommands({
       .setDescription(
         [
           ``,
-          `> Rank Status: **${profile.isStaff ? "<a:crownBossKingQueen:1571805552303018024> Staff" : "<:memberapprovedids:1571852902295937134> Member"}**`,
+          `> Rank Status: **${statusLabel}**`,
           ``,
           `**<a:ranking:1572188246920663041> Level ${level} Progress: ** \` ${progressBar} \` *(${progressXP * 2}%)*`,
           `─────────────────────────────────`,
-          `### <a:moneybagcoin:1571920822694715492> **EP Balance:** \` ${(profile.botBalance || 0).toLocaleString()} EP \``,
+          `### <a:moneybagcoin:1571920822694715492> **Total EP:** \` ${totalCombinedEp.toLocaleString()} EP \``,
+          `> **Discord EP:** ${botEp.toLocaleString()} EP`,
+          webUser
+            ? `> **Website EP:** ${webXp.toLocaleString()} EP`
+            : `> **Website Vault:** Unlinked`,
+          `─────────────────────────────────`,
           `### <a:redenvelopeMessage:1571854787610148954> **Messages Dispatched:** \` ${msgCount.toLocaleString()} \``,
           `### <a:botAI:1571833293802967081> **AI Interactions:** \` ${(profile.chatStats?.aiPromptsCount || 0).toLocaleString()} \``,
           `### <a:kuromiLoveChase:1571805445629411429> **Mini-Games Played:** \` ${(profile.gameStats?.totalGamesPlayed || 0).toLocaleString()} \``,
@@ -324,7 +353,7 @@ async function handleIdentityCommands({
           `### <:numberTwo2:1571805436028653601> Anti-Spam & Chat Hygiene 🚫`,
           `> Keep channels clean and readable. Avoid message flooding, rapid emote spam, wall-of-text copy-pastes, or disruptive mentions.`,
           ``,
-          `### <:numberThree3:1571805433532780646> Strictly No NSFW Material <:nsfw:1572178514352939048>`,
+          `### <:numberThree3:1571805433532780646> Strictly No NSFW Material <:nsfw:1572178514352939048><:disslike:1572178509265109124>`,
           `> Uploading, linking, or discussing adult, explicit, suggestive, or inappropriate content results in an **immediate and permanent ban**.`,
           ``,
           `### <:numberFour4:1571805431503003689> Suspicious Links & Safety <a:warningAlert:1571926598804971740>`,

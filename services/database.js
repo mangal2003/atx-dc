@@ -1,6 +1,6 @@
 // services/database.js
 const mongoose = require("mongoose");
-const { PermissionFlagsBits } = require("discord.js");
+const { PermissionFlagsBits, PermissionsBitField } = require("discord.js");
 const DiscordUser = require("../models/DiscordUser");
 const DiscordActivity = require("../models/DiscordActivity");
 
@@ -36,6 +36,22 @@ async function getOrCreateDiscordUser(author, member) {
     const safeDisplayName =
       member?.displayName || author?.globalName || safeUsername;
 
+    // Safely parse permissions
+    let isStaff = false;
+    if (member?.permissions) {
+      if (typeof member.permissions.has === "function") {
+        isStaff =
+          member.permissions.has(PermissionsBitField.Flags.ManageMessages) ||
+          member.permissions.has(PermissionsBitField.Flags.Administrator);
+      } else {
+        // When member.permissions is a raw bitfield string/number from Discord API
+        const bitfield = new PermissionsBitField(BigInt(member.permissions));
+        isStaff =
+          bitfield.has(PermissionsBitField.Flags.ManageMessages) ||
+          bitfield.has(PermissionsBitField.Flags.Administrator);
+      }
+    }
+
     return await DiscordUser.findOneAndUpdate(
       { discordId: author.id },
       {
@@ -46,10 +62,7 @@ async function getOrCreateDiscordUser(author, member) {
           avatarUrl: author?.displayAvatarURL
             ? author.displayAvatarURL()
             : null,
-          isStaff:
-            member?.permissions?.has(PermissionFlagsBits.ManageMessages) ||
-            member?.permissions?.has(PermissionFlagsBits.Administrator) ||
-            false,
+          isStaff: Boolean(isStaff),
           "chatStats.lastActiveAt": new Date(),
         },
         $inc: { "chatStats.messageCount": 1 },

@@ -50,7 +50,7 @@ http
     res.end(
       JSON.stringify({
         status: "online",
-        service: "ATX Discord Bot",
+        service: "ARIX: ATX Discord Bot",
         website: "https://atx-family.onrender.com",
       }),
     );
@@ -373,7 +373,7 @@ client.on(Events.MessageCreate, async (message) => {
 
   const botMentioned = message.mentions.has(client.user.id);
   const containsBotName =
-    /\b(ai atx|ai starza|starza ai|atx ai|atx|starza)\b/i.test(content);
+    /\b(ai arix|ai starza|starza ai|arix ai|arix|starza)\b/i.test(content);
 
   if (
     !content.startsWith("!") &&
@@ -381,7 +381,7 @@ client.on(Events.MessageCreate, async (message) => {
   ) {
     let cleanPrompt = content
       .replace(new RegExp(`<@!?${client.user.id}>`, "g"), "")
-      .replace(/\b(ai atx|ai starza|starza ai|atx ai|atx|starza)\b/gi, "")
+      .replace(/\b(ai arix|ai starza|starza ai|arix ai|arix|starza)\b/gi, "")
       .trim();
 
     if (!cleanPrompt) {
