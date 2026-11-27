@@ -215,10 +215,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   if (interaction.commandName === "nitro") return;
 
-  const isSecret = interaction.commandName === "secret";
+  const isPrivate =
+    interaction.commandName === "secret" ||
+    interaction.commandName === "report";
+
   await interaction
     .deferReply({
-      flags: isSecret ? [MessageFlags.Ephemeral] : undefined,
+      flags: isPrivate ? [MessageFlags.Ephemeral] : undefined,
     })
     .catch(() => {});
 
@@ -406,10 +409,20 @@ client.on(Events.MessageCreate, async (message) => {
   }
 
   // Prefix commands (!command)
+  // bot.js - In Events.MessageCreate handler:
   if (content.startsWith("!")) {
     const args = content.slice(1).trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
     const targetUser = message.mentions.users.first() || null;
+
+    // Delete immediately for sensitive commands like report or secret
+    if (commandName === "report") {
+      const warning = await message.reply(
+        "🔒 **For total privacy & anonymity**, prefix `!report` is disabled in public channels.\nPlease use the slash command: **/report** (visible only to you).\n## DELETE YOUR MESSAGE ASAP <:redcardpenalty:1571939410977620059>",
+      );
+      setTimeout(() => warning.delete().catch(() => {}), 6000);
+      return;
+    }
 
     await executeCommand({
       commandName,
@@ -422,6 +435,7 @@ client.on(Events.MessageCreate, async (message) => {
       textInput: args.join(" "),
       numberInput: parseInt(args[0], 10) || null,
       client,
+      isSlash: false,
       reply: (payload) => message.reply(payload),
       deleteOriginal: () => message.delete().catch(() => {}),
     });

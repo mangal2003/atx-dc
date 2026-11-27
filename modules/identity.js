@@ -105,7 +105,7 @@ function getHelpPages() {
           `> Dispatches the official onboarding briefing to newly arrived operators.`,
           `### \`/rules\` • \`!rules\``,
           `> Displays server protocols, conduct boundaries, and admin escalations.`,
-          `### \`/secret <message>\` • \`/report <target> <reason>\``,
+          `### \`/secret <message>\` • \`/report <reason> <target>\``,
           `> Ephemeral whisper messages or direct logs to executive moderators.`,
           `────────────────────────────────────────`,
           `-# <:linkChain:1575177914457006080> Web Pairing available strictly inside the ATX Server.`,
@@ -125,6 +125,7 @@ async function handleIdentityCommands({
   textInput,
   reply,
   client,
+  deleteOriginal,
 }) {
   if (commandName === "help") {
     let currentPage = 0;
@@ -252,7 +253,7 @@ async function handleIdentityCommands({
           ``,
           `> Rank Status: **${statusLabel}**`,
           ``,
-          `**<a:ranking:1572188246920663041> Level ${level} Progress: ** \` ${progressBar} \` *(${progressXP * 2}%)*`,
+          `**<a:ranking:1572188246920663041> Level ${level} Progress:** \`${progressBar}\` *(${progressXP * 2}%)*`,
           `─────────────────────────────────`,
           `### <a:moneybagcoin:1571920822694715492> **Total EP:** \` ${totalCombinedEp.toLocaleString()} EP \``,
           `> **Discord EP:** ${botEp.toLocaleString()} EP`,
@@ -407,24 +408,98 @@ async function handleIdentityCommands({
   }
 
   if (commandName === "report") {
-    const target = targetUser;
-    const reason = textInput || args.slice(1).join(" ");
-    if (!target || !reason) {
-      return reply(
-        "<a:warningAlert:1571926598804971740> Usage: `/report target:@user reason:<reason>`",
-      );
+    // Block prefix trigger fallback if it ever reaches here
+    if (typeof isSlash !== "undefined" && !isSlash) {
+      return reply({
+        content:
+          "🔒 **Prefix disabled.** Use the slash command `/report` so your report remains strictly ephemeral and private.",
+        flags: [MessageFlags.Ephemeral],
+      });
     }
 
-    await logActivity({
-      author,
-      channel,
-      guild,
-      activityType: "MOD_INVITE_BLOCKED",
-      details: { reportedUser: target.id, reason },
-    });
-    return reply(
-      `<a:redandbluesiren:1571926585769201725> **Report** needs some fix, let's talk till then`,
-    );
+    const target = targetUser;
+    const reportText = (textInput || args.join(" ") || "").trim();
+
+    if (!reportText && !target) {
+      return reply({
+        content:
+          "### <a:warningAlert:1571926598804971740> Anonymous Report Usage\n> Use: `/report reason:<details>` or `/report target:@user reason:<details>`\n-# Your identity is completely scrubbed from staff logs.",
+        flags: [MessageFlags.Ephemeral],
+      });
+    }
+
+    try {
+      const REPORT_CHANNEL_ID =
+        process.env.DISCORD_REPORT_CHANNEL_ID || "1536438131790712892";
+      const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+      const LOGO_URL =
+        "https://res.cloudinary.com/disuussfy/image/upload/v1786689078/auction_items/ff6xykirlrcdwqwfeauu.jpg";
+
+      const descriptionLines = [];
+      if (target) {
+        descriptionLines.push(`**Against:** ${target} (\`${target.id}\`)`);
+        descriptionLines.push(``);
+      }
+      descriptionLines.push(`**INCIDENT / MESSAGE DETAILS**`);
+      descriptionLines.push(
+        `> ${reportText || "No additional description provided."}`,
+      );
+
+      const reportEmbed = new EmbedBuilder()
+        .setTitle("Anonymous REPORT")
+        .setDescription(descriptionLines.join("\n"))
+        .setColor(0xff0055)
+        .setFooter({
+          text: "ATX Anonymous Terminal",
+          iconURL: LOGO_URL,
+        })
+        .setTimestamp();
+
+      let dispatched = false;
+
+      // Method A: Native Discord Text Channel
+      const reportChannel = client.channels.cache.get(REPORT_CHANNEL_ID);
+      if (reportChannel && reportChannel.isTextBased()) {
+        await reportChannel.send({ embeds: [reportEmbed] });
+        dispatched = true;
+      }
+      // Method B: Webhook Fallback
+      else if (webhookUrl) {
+        await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: "ATX Anonymous Terminal",
+            avatar_url: LOGO_URL,
+            embeds: [reportEmbed.toJSON()],
+          }),
+        });
+        dispatched = true;
+      }
+
+      if (!dispatched) {
+        return reply({
+          content:
+            "### <:deadSkull:1571908653966041308> ARIX Offline\n> Unable to connect to the internal review channel. Please report via the [**Web Portal**](https://atx-family.onrender.com/contact).",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+
+      // Ephemeral confirmation visible only to the submitter
+      return reply({
+        content: [
+          `### <a:approvedCorrect:1572188241245900890> Anonymous Report Dispatched`,
+        ].join("\n"),
+        flags: [MessageFlags.Ephemeral],
+      });
+    } catch (err) {
+      console.error("[ANONYMOUS REPORT ERROR]:", err);
+      return reply({
+        content:
+          "### <:auraloss:1571805296769110056> Failed to submit report. Please try again later.",
+        flags: [MessageFlags.Ephemeral],
+      });
+    }
   }
 
   return false;

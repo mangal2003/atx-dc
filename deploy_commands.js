@@ -237,12 +237,20 @@ const commands = [
   // 6. Moderation & Staff
   new SlashCommandBuilder()
     .setName("report")
-    .setDescription("[COMING SOON]:Report a user to staff")
-    .addUserOption((opt) =>
-      opt.setName("target").setDescription("User").setRequired(true),
+    .setDescription(
+      "Dispatches an anonymous incident report directly to ATX Administrators",
     )
     .addStringOption((opt) =>
-      opt.setName("reason").setDescription("Reason").setRequired(true),
+      opt
+        .setName("reason")
+        .setDescription("Detailed description of the issue or incident")
+        .setRequired(true),
+    )
+    .addUserOption((opt) =>
+      opt
+        .setName("target")
+        .setDescription("User you are reporting (optional)")
+        .setRequired(false),
     ),
 
   // 7. Nitro Mimic Command

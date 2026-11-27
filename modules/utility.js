@@ -18,7 +18,7 @@ async function handleUtilityCommands({
 }) {
   if (
     commandName === "ai" ||
-    commandName === "atx" ||
+    commandName === "arix" ||
     commandName === "starza"
   ) {
     const prompt = textInput || args.join(" ").trim();
@@ -84,7 +84,7 @@ async function handleUtilityCommands({
       const transcript = recentMessages.join("\n").slice(0, 4000);
       const debrief = await callAiWithFallback(
         [
-          `You are ATX Bot (your other name is "Starza" the female version), the official resident bot and caretaker of the ATX server.`,
+          `You are ARIX Bot (your other name is "Arix" aka starza), the official resident bot and caretaker of the ATX server.`,
           `Summarize the chat activity from the past ${hours} hours into a crisp, engaging server debrief.`,
           ``,
           `Include these exact sections:`,
