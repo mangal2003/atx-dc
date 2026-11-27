@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>
+        <%= botName %> Terminal
+    </title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/glitch-docs.css">
+</head>
+
+<body>
+
+    <!-- Screen Scanlines -->
+    <div class="scanlines"></div>
+
+    <!-- Mobile Toast Notification -->
+    <div id="toast">Copied to clipboard</div>
+
+    <main class="terminal-container">
+
+        <!-- Glitch Header Box -->
+        <header class="glitch-hud-box">
+            <div class="hero-mobile-row">
+                <div class="skull-avatar-wrap">💀</div>
+                <div class="hero-meta">
+                    <h1 class="title-text">
+                        <%= botName %> CORE
+                    </h1>
+                    <div class="status-pill-row">
+                        <span class="status-pill pill-active">● ONLINE</span>
+                        <span class="status-pill pill-cyan">V<%= version %></span>
+                        <span class="status-pill pill-cyan">
+                            <%= latency %>MS
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-intro">
+                Autonomous discord bot for ATX Family. Powered by low-latency memory models, continuous speed
+                minigames, and cross-platform Web Vault EP synchronization.
+            </div>
+        </header>
+
+        <!-- Scrollable Tab Switcher -->
+        <nav class="terminal-tabs">
+            <button class="tab-btn active" data-target="tab-commands">Commands</button>
+            <button class="tab-btn" data-target="tab-sync">Web Vault</button>
+            <button class="tab-btn" data-target="tab-privacy">Privacy</button>
+            <button class="tab-btn" data-target="tab-terms">Terms</button>
+        </nav>
+
+        <!-- TAB 1: ALL COMMANDS DETAILED -->
+        <section class="terminal-panel active" id="tab-commands">
+
+            <div class="section-head">
+                <h2>Commands</h2>
+                <span class="section-tag">TAP SYNTAX TO COPY</span>
+            </div>
+
+            <!-- 1. AI & UTILITIES -->
+            <div class="category-block">
+                <h3><span>🧠</span> AI & Conversational Tools</h3>
+
+                <div class="cmd-card">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/ai &lt;prompt&gt;</span>
+                        <span class="cmd-badge">!ai</span>
+                    </div>
+                    <p class="cmd-desc">Interacts directly with ARIX. Retains conversational
+                        context and answers technical, server, or gaming questions.</p>
+                    <div class="cmd-example">/ai what are the top winning tactics for ocho?</div>
+                </div>
+
+                <div class="cmd-card">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/summary [hours]</span>
+                        <span class="cmd-badge">!summary</span>
+                    </div>
+                    <p class="cmd-desc">Reads previous chat messages across the specified timeframe and generates a
+                        concise debrief of key conversations, active players, and drama.</p>
+                    <div class="cmd-example">/summary hours:6</div>
+                </div>
+
+                <div class="cmd-card">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/counter &lt;statement&gt;</span>
+                        <span class="cmd-badge">!counter</span>
+                    </div>
+                    <p class="cmd-desc">Formulates a logical, tactical, or satirical rebuttal to debunk arguments or
+                        playfully counter other members in chat debates.</p>
+                    <div class="cmd-example">/counter statement:pc gaming is completely dead</div>
+                </div>
+
+                <div class="cmd-card">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/factcheck &lt;claim&gt;</span>
+                        <span class="cmd-badge">!factcheck</span>
+                    </div>
+                    <p class="cmd-desc">Analyzes rumors, tech claims, or gaming stats, issuing a formal
+                        True/False/Misleading verdict with supporting logic.</p>
+                    <div class="cmd-example">/factcheck claim:groww charges 20rs per order for equity delivery</div>
+                </div>
+
+                <div class="cmd-card">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/eli5 &lt;topic&gt;</span>
+                        <span class="cmd-badge">!eli5</span>
+                    </div>
+                    <p class="cmd-desc">"Explain Like I'm 5": Breaks down complex computing, stock trading, or crypto
+                        concepts into clear, digestible analogies.</p>
+                    <div class="cmd-example">/eli5 topic:How ARIX works</div>
+                </div>
+
+                <div class="cmd-card">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/translate &lt;text&gt;</span>
+                        <span class="cmd-badge">!translate</span>
+                    </div>
+                    <p class="cmd-desc">Translates multilingual chat messages into formatted English
+                        outputs for community accessibility.</p>
+                    <div class="cmd-example">/translate text:tournament starts sharp at nine</div>
+                </div>
+
+                <div class="cmd-card">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/remind &lt;time&gt; &lt;task&gt;</span>
+                        <span class="cmd-badge">!remind</span>
+                    </div>
+                    <p class="cmd-desc">Queues an automated alert timer (e.g. 10m, 2h) that mentions you in chat when
+                        your task or tournament begins.</p>
+                    <div class="cmd-example">/remind time:15m task:collect daily web vault EP</div>
+                </div>
+            </div>
+
+            <!-- 2. MINI-GAMES & REWARDS -->
+            <div class="category-block">
+                <h3><span>🎮</span> Live Chat Mini-Games</h3>
+
+                <div class="cmd-card gold-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/quiz</span>
+                        <span class="cmd-badge">!quiz</span>
+                    </div>
+                    <p class="cmd-desc">Spawns a timed general knowledge or gaming trivia question with letter hints.
+                        First member to type the answer in chat earns +50 EP.</p>
+                </div>
+
+                <div class="cmd-card gold-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/unscramble</span>
+                        <span class="cmd-badge">!unscramble</span>
+                    </div>
+                    <p class="cmd-desc">Scrambles the letters of a dictionary word. Type the un-jumbled word in chat to
+                        win and automatically trigger the next round.</p>
+                </div>
+
+                <div class="cmd-card gold-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/fasttype</span>
+                        <span class="cmd-badge">!fasttype</span>
+                    </div>
+                    <p class="cmd-desc">Generates a high-speed sentence prompt. Tests keyboard and mobile typing speed.
+                        First exact match wins EP.</p>
+                </div>
+
+                <div class="cmd-card gold-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/emojigame</span>
+                        <span class="cmd-badge">!emojigame</span>
+                    </div>
+                    <p class="cmd-desc">Displays a sequence of emojis representing a movie, game, or celebrity. Guess
+                        the title in chat to claim the reward.</p>
+                </div>
+
+                <div class="cmd-card gold-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/stopgame</span>
+                        <span class="cmd-badge">!stopgame</span>
+                    </div>
+                    <p class="cmd-desc">Halts the active continuous mini-game in the current channel and reveals the
+                        un-guessed solution.</p>
+                </div>
+            </div>
+
+            <!-- 3. SOCIAL DYNAMICS -->
+            <div class="category-block">
+                <h3><span>🎭</span> Social Radar & Entertainment</h3>
+
+                <div class="cmd-card pink-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/lovemeter &lt;target&gt;</span>
+                        <span class="cmd-badge">!lovemeter</span>
+                    </div>
+                    <p class="cmd-desc">Calculates romance and friendship chemistry percentages between two members,
+                        complete with visual progress hearts and a witty verdict.</p>
+                    <div class="cmd-example">/lovemeter target:@Member</div>
+                </div>
+
+                <div class="cmd-card pink-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/aura [target]</span>
+                        <span class="cmd-badge">!aura</span>
+                    </div>
+                    <p class="cmd-desc">Scans chat behavior and generates a daily aura diagnostic (-10,000 to +10,000
+                        points) based on current server status.</p>
+                </div>
+
+                <div class="cmd-card pink-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/roast [target]</span>
+                        <span class="cmd-badge">!roast</span>
+                    </div>
+                    <p class="cmd-desc">Delivers a savage, playful, and situational burn targeting gameplay blunders or
+                        chat quirks.</p>
+                </div>
+
+                <div class="cmd-card pink-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/flirt [target]</span>
+                        <span class="cmd-badge">!flirt</span>
+                    </div>
+                    <p class="cmd-desc">Sends ultra-smooth or humorously awkward pick-up lines designed for community
+                        laughs.</p>
+                </div>
+
+                <div class="cmd-card pink-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/truthdare [mode]</span>
+                        <span class="cmd-badge">!truthdare</span>
+                    </div>
+                    <p class="cmd-desc">Prompts spicy truths or chaotic server dares for voice channels and text group
+                        hangouts.</p>
+                </div>
+
+                <div class="cmd-card pink-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/tossacoin</span>
+                        <span class="cmd-badge">!tossacoin</span>
+                    </div>
+                    <p class="cmd-desc">Provably fair random 50/50 flip to settle disputes, bets, or match matchups.</p>
+                </div>
+            </div>
+
+            <!-- 4. IDENTITY & TELEMETRY -->
+            <div class="category-block">
+                <h3><span>👑</span> Identity, Vault & Safety</h3>
+
+                <div class="cmd-card green-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/profile [target]</span>
+                        <span class="cmd-badge">!profile</span>
+                    </div>
+                    <p class="cmd-desc">Displays operator HUD showing level progression, messages dispatched, games won,
+                        birthday records, and unified EP balances.</p>
+                </div>
+
+                <div class="cmd-card green-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/balance</span>
+                        <span class="cmd-badge">!balance</span>
+                    </div>
+                    <p class="cmd-desc">Quick telemetry check detailing your exact bot EP balance, website vault XP, and
+                        combined net total.</p>
+                </div>
+
+                <div class="cmd-card green-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/connectweb &lt;code&gt;</span>
+                        <span class="cmd-badge">Slash Only</span>
+                    </div>
+                    <p class="cmd-desc">Binds your Discord User ID to your ATX Web account using the 6-digit token from
+                        your online profile. Locked strictly to the ATX server.</p>
+                    <div class="cmd-example">/connectweb code:782194</div>
+                </div>
+
+                <div class="cmd-card green-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/report &lt;reason&gt; [target]</span>
+                        <span class="cmd-badge">Ephemeral Slash</span>
+                    </div>
+                    <p class="cmd-desc">Dispatches an encrypted incident log directly to the admin terminal. The
+                        response is visible only to you, and your identity is scrubbed from the report.</p>
+                    <div class="cmd-example">/report reason:unauthorized scam link posted in general</div>
+                </div>
+
+                <div class="cmd-card green-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/setbirthday &lt;DD/MM&gt;</span>
+                        <span class="cmd-badge">!setbirthday</span>
+                    </div>
+                    <p class="cmd-desc">Registers your birthday in the server registry for automatic birthday
+                        announcements and perks.</p>
+                    <div class="cmd-example">/setbirthday date:15/08</div>
+                </div>
+
+                <div class="cmd-card green-accent">
+                    <div class="cmd-header">
+                        <span class="cmd-syntax">/rules</span>
+                        <span class="cmd-badge">!rules</span>
+                    </div>
+                    <p class="cmd-desc">Prints the 6 core laws of ATX Family covering respect, anti-spam, NSFW bans, and
+                        link safety.</p>
+                </div>
+            </div>
+
+            <div class="action-btn-row">
+                <a href="https://discord.gg/pjzdHKS6Jj" target="_blank" class="action-link btn-primary">Join ATX
+                    Server</a>
+                <a href="https://atx-family.onrender.com" target="_blank" class="action-link btn-secondary">Web
+                    Platform</a>
+            </div>
+
+        </section>
+
+        <!-- TAB 2: WEB VAULT SYNC -->
+        <section class="terminal-panel" id="tab-sync">
+            <div class="section-head">
+                <h2>Web Vault Integration</h2>
+                <span class="section-tag">UNIFIED EP</span>
+            </div>
+
+            <div class="doc-section">
+                <h3>How Synchronization Works</h3>
+                <p>ARIX maintains a dual-ledger telemetry pipeline connecting the Discord with the
+                    official ATX Web Platform:</p>
+                <ul>
+                    <li><strong>Bot EP:</strong> Earned via continuous mini-game victories (+50 EP), active chat
+                        milestones, and server events.</li>
+                    <li><strong>Website Vault XP:</strong> Earned via daily web logins, EP games and platform
+                        quizzes.</li>
+                    <li><strong>Combined Net:</strong> Aggregated balance automatically rendered on your live
+                        web profile.</li>
+                </ul>
+            </div>
+
+            <div class="doc-section">
+                <h3>3-Step Linking Guide</h3>
+                <p><strong>Step 1:</strong> Log into <a href="https://atx-family.onrender.com" target="_blank"
+                        style="color:var(--accent-cyan);">atx-family.onrender.com</a> with your Google Account.</p>
+                <p><strong>Step 2:</strong> Navigate to your Profile page to generate your single-use <strong>6-digit
+                        verification code</strong> (valid for 5-10 minutes).</p>
+                <p><strong>Step 3:</strong> In the official <strong>ATX Discord Server</strong>, run the command:</p>
+                <div class="cmd-example" style="font-size:0.8rem; padding:0.5rem;">/connectweb code:YOUR_6_DIGIT_CODE
+                </div>
+                <p style="margin-top:0.5rem; font-size:0.7rem; color:var(--text-dim);"><em>Note: For security and
+                        anti-exploit enforcement, account linking can only be triggered from the ATX
+                        Family Discord server.</em></p>
+            </div>
+        </section>
+
+        <!-- TAB 3: PRIVACY POLICY -->
+        <section class="terminal-panel" id="tab-privacy">
+            <div class="section-head">
+                <h2>Privacy Policy</h2>
+                <span class="section-tag">ATX | ARIX 2026</span>
+            </div>
+
+            <div class="doc-section">
+                <h3>1. Information Ingestion</h3>
+                <p>ARIX processes and retains minimal identifiers required for system function:</p>
+                <ul>
+                    <li><strong>Public Discord Identifiers:</strong> User ID, Server Guild ID, and Username (for
+                        leaderboard and balance tracking).</li>
+                    <li><strong>Message Activity Metrics:</strong> Incremental counters for level progression and XP
+                        calculations. Chat contents are processed in memory for conversational responses and never
+                        permanently archived.</li>
+                    <li><strong>Account Linkage:</strong> One-way binding between Discord ID and Google Web OAuth ID
+                        when manually paired by the user.</li>
+                </ul>
+            </div>
+
+            <div class="doc-section">
+                <h3>2. Anonymity of Reports</h3>
+                <p>When executing <code>/report</code>, ARIX uses Discord Ephemeral Interactions. The submitter's
+                    identity is stripped before logging to moderation review channels. Staff cannot trace the report
+                    origin.</p>
+            </div>
+
+            <div class="doc-section">
+                <h3>3. Third-Party Sharing</h3>
+                <p>We do not sell, rent, or trade telemetry data to data brokers or advertising networks. Ingestion
+                    pipelines communicate exclusively with internal databases and Google AI inference
+                    endpoints.</p>
+            </div>
+
+            <div class="doc-section">
+                <h3>4. Data Removal</h3>
+                <p>Users may request a complete wipe of their telemetry data, chat counters, and linked accounts at any
+                    time via an administrative ticket or the web contact terminal.</p>
+            </div>
+        </section>
+
+        <!-- TAB 4: TERMS OF SERVICE -->
+        <section class="terminal-panel" id="tab-terms">
+            <div class="section-head">
+                <h2>Terms of Service</h2>
+                <span class="section-tag">LEGAL PROTOCOLS</span>
+            </div>
+
+            <div class="doc-section">
+                <h3>1. Terms of Acceptance</h3>
+                <p>By using ARIX or adding it to your guild, you agree to comply with Discord's Terms of Service and
+                    Community Guidelines. Attempting to exploit memory race conditions, spam-triggering rate limits, or
+                    abusing automated endpoints will result in an immediate permanent blacklist.</p>
+            </div>
+
+            <div class="doc-section">
+                <h3>2. Virtual Currency Nature</h3>
+                <p>Experience Points (EP) and Vault XP are purely digital utility tokens designed for server
+                    gamification and web leaderboards. They hold zero fiat cash value and cannot be exchanged for real
+                    currency.</p>
+            </div>
+
+            <div class="doc-section">
+                <h3>3. Service Availability</h3>
+                <p>ARIX is hosted on 24/7 cloud infrastructure with automatic health monitoring. We do not guarantee
+                    uninterrupted uptime during planned API maintenance or database indexing cycles.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="/js/docs.js"></script>
+</body>
+
+</html>

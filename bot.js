@@ -43,21 +43,39 @@ process.on("uncaughtException", (error) =>
 );
 
 // Keep-Alive Server
+const express = require("express");
+const path = require("path");
+
+const app = express();
 const PORT = process.env.PORT || 3000;
-http
-  .createServer((_, res) => {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({
-        status: "online",
-        service: "ARIX: ATX Discord Bot",
-        website: "https://atx-family.onrender.com",
-      }),
-    );
-  })
-  .listen(PORT, () =>
-    console.log(`[HTTP KEEP-ALIVE] Listening on port ${PORT}`),
-  );
+
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+app.use(express.static(path.join(__dirname, "public")));
+
+// Main Documentation & Legal Terminal
+app.get("/", (req, res) => {
+  res.render("docs", {
+    botName: "ARIX",
+    version: "2.4.0",
+    serverCount: client?.guilds?.cache?.size || 1,
+    latency: client?.ws?.ping || 24,
+  });
+});
+
+// JSON Health Check Route
+app.get("/health", (_, res) => {
+  res.json({
+    status: "online",
+    service: "ARIX Terminal Core",
+    guilds: client?.guilds?.cache?.size || 0,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`[HTTP CORE] Cyber Terminal running on port ${PORT}`);
+});
 
 // Connect DB
 connectDB();
