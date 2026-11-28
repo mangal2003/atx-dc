@@ -1,12 +1,378 @@
 // modules/games.js
-const { EmbedBuilder } = require("discord.js");
+const {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+} = require("discord.js");
 const { callAiWithFallback } = require("../services/ai");
 const { EMOJIS } = require("../config/emojis");
+const { DiscordUser } = require("../services/database");
+const {
+  generateMathRush,
+  getHangmanWord,
+  getRandomAnagramSet,
+} = require("./gameEngines");
 
-const activeGames = new Map(); // channelId -> { type, answer, round, timer, isSolving }
+const activeGames = new Map(); // channelId -> active session
+const activeLobbies = new Map(); // channelId -> lobbyMsg.id
 const GAME_TIMEOUT_MS = 2 * 60 * 1000;
+const REQUIRED_PLAYERS = 2; // Set to 1 for testing (can be increased back to 3 later)
 
-// Helper to fetch random word by length & difficulty
+// ==========================================
+// MULTIPLAYER LOBBY (1 PLAYER FOR TESTING)
+// ==========================================
+// ==========================================
+// MULTIPLAYER LOBBY (1 PLAYER FOR TESTING)
+// ==========================================
+async function startMultiplayerLobby(ctx, gameType, client) {
+  const { channel, reply, author } = ctx;
+
+  // Clear any ghost/stuck lobbies or sessions in this channel
+  if (activeLobbies.has(channel.id)) {
+    activeLobbies.delete(channel.id);
+  }
+  if (activeGames.has(channel.id)) {
+    const old = activeGames.get(channel.id);
+    if (old?.timer) clearTimeout(old.timer);
+    if (old?.interval) clearInterval(old.interval);
+    activeGames.delete(channel.id);
+  }
+
+  const gameTitles = {
+    mathrush: "MATH RUSH",
+    hangman: "ATX HANGMAN",
+    anagram: "QUICK-FIRE ANAGRAM DUEL",
+    guessnumber: "GUESS THE NUMBER (1-100)",
+  };
+
+  // IF TESTING WITH 1 PLAYER: Launch directly without waiting for a lobby click!
+  if (REQUIRED_PLAYERS <= 1) {
+    await reply({
+      content: `<a:announcement2:1571861016306782298> Initializing **${gameTitles[gameType]}**...`,
+      fetchReply: true,
+    });
+    return launchGameInstance(channel, gameType, [author.id], client);
+  }
+
+  // MULTI-PLAYER LOBBY (When REQUIRED_PLAYERS > 1)
+  const players = new Set([author.id]); // Host is auto-joined!
+
+  const getLobbyEmbed = (remainingSec) =>
+    new EmbedBuilder().setColor(0x00f3ff).setDescription(
+      [
+        `### <a:sparklesstars:1571929733770383521> Matchmaking (${players.size}/${REQUIRED_PLAYERS})`,
+        `Click **JOIN** to enter`,
+        ``,
+        `> **Joined:**`,
+        Array.from(players)
+          .map((id) => `> • <@${id}>`)
+          .join("\n"),
+        ``,
+        `────────────────────────────────────────`,
+        `-# ⏳ Auto-cancels in **${remainingSec}s**.`,
+      ].join("\n"),
+    );
+
+  const joinBtn = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("lobby_join")
+      .setLabel("⚔️ Join")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("lobby_leave")
+      .setLabel("Leave")
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  let secondsLeft = 30;
+
+  const lobbyMsg = await reply({
+    embeds: [getLobbyEmbed(secondsLeft)],
+    components: [joinBtn],
+    fetchReply: true,
+  });
+
+  if (!lobbyMsg) return;
+  activeLobbies.set(channel.id, lobbyMsg.id);
+
+  const countdown = setInterval(async () => {
+    secondsLeft -= 5;
+    if (secondsLeft <= 0 || !activeLobbies.has(channel.id)) {
+      clearInterval(countdown);
+      if (players.size < REQUIRED_PLAYERS) {
+        activeLobbies.delete(channel.id);
+        const expiredEmbed = new EmbedBuilder()
+          .setColor(0x8e8e93)
+          .setDescription(
+            `### ❌ Match Cancelled\n> Lobby did not reach the **${REQUIRED_PLAYERS}-player threshold** in time.`,
+          );
+        return lobbyMsg
+          .edit({ embeds: [expiredEmbed], components: [] })
+          .catch(() => {});
+      }
+    } else {
+      await lobbyMsg
+        .edit({ embeds: [getLobbyEmbed(secondsLeft)] })
+        .catch(() => {});
+    }
+  }, 5000);
+
+  const collector = lobbyMsg.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: 30000,
+  });
+
+  collector.on("collect", async (interaction) => {
+    if (interaction.customId === "lobby_join") {
+      players.add(interaction.user.id);
+      await interaction.reply({
+        content: "<:like:1572178511446151259> You joined the match!",
+        ephemeral: true,
+      });
+    } else if (interaction.customId === "lobby_leave") {
+      players.delete(interaction.user.id);
+      await interaction.reply({
+        content: "<:disslike:1572178509265109124> You left the lobby.",
+        ephemeral: true,
+      });
+    }
+
+    if (players.size >= REQUIRED_PLAYERS) {
+      clearInterval(countdown);
+      collector.stop("ready");
+      activeLobbies.delete(channel.id);
+
+      await lobbyMsg
+        .edit({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x00ffaa)
+              .setDescription(
+                `### 🚀 Launching **${gameTitles[gameType]}**...`,
+              ),
+          ],
+          components: [],
+        })
+        .catch(() => {});
+
+      launchGameInstance(channel, gameType, Array.from(players), client);
+    }
+  });
+}
+
+// ==========================================
+// GAME INSTANCE LAUNCHER
+// ==========================================
+async function launchGameInstance(channel, gameType, playerList, client) {
+  // 1. MATH RUSH
+  if (gameType === "mathrush") {
+    const { numbers, target } = generateMathRush();
+
+    const embed = new EmbedBuilder()
+      .setColor(0x00f3ff)
+      .setAuthor({ name: "MATH RUSH • REACH THE TARGET" })
+      .setDescription(
+        [
+          `### TARGET NUMBER: \` ${target} \``,
+          `> Available Numbers: **[ ${numbers.join(", ")} ]**`,
+          ``,
+          `Type your math equation using these numbers to equal **${target}**!`,
+          `*Allowed symbols:* \`+\` \`-\` \`*\` \`/\` \`(\` \`)\``,
+          ``,
+          `> **Reward:** \`+75 EP\``,
+          `-# <a:pixelclockalarm:1571867210018852875> Time: 45 seconds | Example: (25 - 5) * 3 + 2`,
+        ].join("\n"),
+      );
+
+    const timer = setTimeout(async () => {
+      if (activeGames.has(channel.id)) {
+        activeGames.delete(channel.id);
+        await channel.send(
+          `### <:vdaylost:1571861008954425436> Time's Up! Nobody solved for Target \`${target}\`.`,
+        );
+      }
+    }, 45000);
+
+    activeGames.set(channel.id, {
+      type: "mathrush",
+      numbers,
+      target,
+      playerList,
+      timer,
+      isSolving: false,
+    });
+
+    return channel.send({ embeds: [embed] });
+  }
+
+  // 2. HANGMAN (DECAYING PRIZE)
+  if (gameType === "hangman") {
+    const word = getHangmanWord();
+    let revealed = Array(word.length).fill("⬜");
+    let currentPot = 120;
+
+    const getHangmanEmbed = (currPot) =>
+      new EmbedBuilder()
+        .setColor(0xff0055)
+        .setAuthor({ name: "HANGMAN • GUESS THE WORD" })
+        .setDescription(
+          [
+            `### \` ${revealed.join(" ")} \``,
+            `> Length: **${word.length} Letters**`,
+            `> Current Prize Pot: **\` +${currPot} EP \`** *(Decaying!)*`,
+            ``,
+            `Type the full word in chat before all hints reveal!`,
+          ].join("\n"),
+        )
+        .setFooter({ text: "EP decays every 6 seconds as hints reveal" });
+
+    const msg = await channel.send({ embeds: [getHangmanEmbed(currentPot)] });
+
+    const interval = setInterval(async () => {
+      if (!activeGames.has(channel.id)) return clearInterval(interval);
+
+      currentPot = Math.max(30, currentPot - 20);
+
+      const unrevealedIndices = [];
+      revealed.forEach((char, idx) => {
+        if (char === "⬜") unrevealedIndices.push(idx);
+      });
+
+      if (unrevealedIndices.length <= 1) {
+        clearInterval(interval);
+        clearTimeout(activeGames.get(channel.id)?.timer);
+        activeGames.delete(channel.id);
+        return channel.send(
+          `### <:deathRip:1571805500797091910> HANGMAN TERMINATED!\n> The word was: **\`${word}\`**. Pot depleted!`,
+        );
+      }
+
+      const randomIdx =
+        unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
+      revealed[randomIdx] = word[randomIdx];
+
+      await msg.edit({ embeds: [getHangmanEmbed(currentPot)] }).catch(() => {});
+    }, 6000);
+
+    const timer = setTimeout(async () => {
+      if (activeGames.has(channel.id)) {
+        clearInterval(interval);
+        activeGames.delete(channel.id);
+        await channel.send(
+          `### <:vdaylost:1571861008954425436> Time's up! Word was **\`${word}\`**.`,
+        );
+      }
+    }, 60000);
+
+    activeGames.set(channel.id, {
+      type: "hangman",
+      word,
+      pot: () => currentPot,
+      interval,
+      timer,
+      isSolving: false,
+    });
+  }
+
+  // 3. QUICK-FIRE ANAGRAM DUEL
+  if (gameType === "anagram") {
+    const { letters, minLen } = getRandomAnagramSet();
+    const solvedWords = new Set();
+    const scores = new Map();
+
+    const embed = new EmbedBuilder()
+      .setColor(0xffd700)
+      .setAuthor({ name: "QUICK ANAGRAM" })
+      .setDescription(
+        [
+          `### GIVEN LETTERS: \`[ ${letters.join(" ")} ]\``,
+          `> Make ANY English word using these letters (min **${minLen} letters**).`,
+          `> **Multiple winners allowed!** Type as many unique words as you can.`,
+          ``,
+          `> • 4 letters: \`+20 EP\``,
+          `> • 5 letters: \`+40 EP\``,
+          `> • 6+ letters: \`+80 EP\``,
+          `-# <:aesthetictimer:1572153881704534036> Round lasts 30 seconds! Type directly in chat.`,
+        ].join("\n"),
+      );
+
+    await channel.send({ embeds: [embed] });
+
+    const timer = setTimeout(async () => {
+      if (activeGames.has(channel.id)) {
+        activeGames.delete(channel.id);
+        const scoreLines = Array.from(scores.entries())
+          .map(([id, ep]) => `- <@${id}>: **+${ep} EP**`)
+          .join("\n");
+
+        await channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x00ffaa)
+              .setTitle("💎 Anagram Scores")
+              .setDescription(
+                scoreLines || "> No valid words were submitted this round!",
+              ),
+          ],
+        });
+      }
+    }, 30000);
+
+    activeGames.set(channel.id, {
+      type: "anagram",
+      letters,
+      minLen,
+      solvedWords,
+      scores,
+      timer,
+    });
+  }
+
+  // 4. GUESS THE NUMBER (1-100)
+  if (gameType === "guessnumber") {
+    const secret = Math.floor(Math.random() * 100) + 1;
+    let attempts = 0;
+
+    const embed = new EmbedBuilder()
+      .setColor(0x7928ca)
+      .setAuthor({ name: "1 TO 100" })
+      .setDescription(
+        [
+          `### I have chosen a secret number between \` 1 \` and \` 100 \`.`,
+          `> Spam your guesses in chat!`,
+          `> The bot will react with **🔼 (Higher)** or **🔽 (Lower)**.`,
+          ``,
+          `> <a:moneybagcoin:1571920822694715492> Victor Reward: **\` +75 EP \`**`,
+          `-# <:aesthetictimer:1572153881704534036> Auto-expires in 60 seconds.`,
+        ].join("\n"),
+      );
+
+    await channel.send({ embeds: [embed] });
+
+    const timer = setTimeout(async () => {
+      if (activeGames.has(channel.id)) {
+        activeGames.delete(channel.id);
+        await channel.send(
+          `### <:vdaylost:1571861008954425436> Expired! The secret number was \`${secret}\`.`,
+        );
+      }
+    }, 60000);
+
+    activeGames.set(channel.id, {
+      type: "guessnumber",
+      secret,
+      attempts,
+      timer,
+      isSolving: false,
+    });
+  }
+}
+
+// ------------------------------------------
+// ORIGINAL SINGLE-PLAYER GENERATION LOGIC
+// ------------------------------------------
 async function fetchRandomWord(round = 1) {
   let length;
   let diffPool;
@@ -55,7 +421,6 @@ async function generateAiGameData(type, round = 1) {
     if (type === "unscramble") {
       let word = await fetchRandomWord(round);
 
-      // Fallback word pool if the API fails
       if (!word) {
         const fallbackPool = [
           "CYBER",
@@ -102,7 +467,6 @@ async function generateAiGameData(type, round = 1) {
         attempts++;
       }
 
-      // Spaced scrambled letters (e.g., "A · T · X · B · O · T")
       const spacedScramble = scrambled.split("").join("·");
       const roundEndTime = Math.floor((Date.now() + GAME_TIMEOUT_MS) / 1000);
 
@@ -298,9 +662,6 @@ Strict Rules:
         if (res.ok) {
           const data = await res.json();
           if (data && data.quote) {
-            quoteAuthor = data.author;
-
-            // Normalize: lowercase, remove punctuation, collapse multiple spaces
             let cleaned = data.quote
               .toLowerCase()
               .replace(/[^a-z0-9\s]/g, "")
@@ -316,7 +677,6 @@ Strict Rules:
         console.warn("[FASTTYPE API] Fetch failed:", err.message);
       }
 
-      // Offline fallback pool if the API is unreachable
       if (!phrase) {
         const fallbackPhrases = [
           "strike hard before the timer ends",
@@ -386,12 +746,9 @@ Strict Rules:
             data.results.length > 0
           ) {
             const item = data.results[0];
-            const cleanQuestion = decodeHtml(item.question);
-            const cleanCorrect = decodeHtml(item.correct_answer).trim();
-
             quizData = {
-              question: cleanQuestion,
-              answer: cleanCorrect,
+              question: decodeHtml(item.question),
+              answer: decodeHtml(item.correct_answer).trim(),
               category: decodeHtml(item.category),
               difficulty: difficulty.toUpperCase(),
             };
@@ -401,7 +758,6 @@ Strict Rules:
         console.warn("[QUIZ API] OpenTDB fetch error:", err.message);
       }
 
-      // Fallback in case of API rate limits
       if (!quizData) {
         quizData = {
           question:
@@ -506,9 +862,12 @@ async function launchNextRound(channel, type, round = 1, client) {
   await channel.send({ embeds: [gameData.embed] });
 }
 
-async function handleGameCommands({ commandName, channel, reply, client }) {
+async function handleGameCommands(ctx) {
+  const { commandName, channel, reply, client } = ctx;
+
+  // Single-player continuous game initiators
   if (["unscramble", "emojigame", "fasttype", "quiz"].includes(commandName)) {
-    if (activeGames.has(channel.id)) {
+    if (activeGames.has(channel.id) || activeLobbies.has(channel.id)) {
       return reply(
         "### <:gonnaCrySob:1571805498309611640> Oiii... An arena game is already ongoing!\nUse `!stopgame` or `/stopgame` to cancel.",
       );
@@ -518,17 +877,49 @@ async function handleGameCommands({ commandName, channel, reply, client }) {
     return true;
   }
 
+  // Multiplayer Lobby initiators (passing valid ctx)
+  if (["math", "mathrush"].includes(commandName)) {
+    await startMultiplayerLobby(ctx, "mathrush", client);
+    return true;
+  }
+  if (commandName === "hangman") {
+    await startMultiplayerLobby(ctx, "hangman", client);
+    return true;
+  }
+  if (commandName === "anagram") {
+    await startMultiplayerLobby(ctx, "anagram", client);
+    return true;
+  }
+  if (["guess", "guessnumber"].includes(commandName)) {
+    await startMultiplayerLobby(ctx, "guessnumber", client);
+    return true;
+  }
+
+  // Universal Stop Command
   if (commandName === "stopgame") {
-    if (!activeGames.has(channel.id)) {
+    if (!activeGames.has(channel.id) && !activeLobbies.has(channel.id)) {
       return reply(
-        "### <:donotbullyids:1571852913708498955> No game is currently active in this channel!",
+        "### <:donotbullyids:1571852913708498955> No game or lobby is currently active in this channel!",
       );
     }
+
+    if (activeLobbies.has(channel.id)) {
+      activeLobbies.delete(channel.id);
+      return reply("🛑 Matchmaking lobby cancelled.");
+    }
+
     const cur = activeGames.get(channel.id);
     clearTimeout(cur.timer);
+    if (cur.interval) clearInterval(cur.interval);
     activeGames.delete(channel.id);
+
+    const reveal =
+      cur.answer ||
+      cur.word ||
+      cur.secret ||
+      (cur.target ? `Target: ${cur.target}` : "N/A");
     return reply(
-      `### <:idcDonotCare:1571805403786772500> Mini-game halted.\n-# The answer was **\`${cur.answer}\`**.`,
+      `### <:idcDonotCare:1571805403786772500> Mini-game halted.\n-# The solution was **\`${reveal}\`**.`,
     );
   }
 
@@ -537,6 +928,8 @@ async function handleGameCommands({ commandName, channel, reply, client }) {
 
 module.exports = {
   activeGames,
+  activeLobbies,
+  startMultiplayerLobby,
   launchNextRound,
   handleGameCommands,
 };

@@ -217,13 +217,13 @@ const commands = [
         .setRequired(false),
     ),
 
-  // 5. Mini-Games
+  // 5. Classic Continuous Mini-Games
   new SlashCommandBuilder()
     .setName("unscramble")
     .setDescription("Start a continuous word unscramble game"),
   new SlashCommandBuilder()
     .setName("emojigame")
-    .setDescription("[NEEDS FIX]:Start a continuous guess-the-game challenge"),
+    .setDescription("Start a continuous guess-the-game challenge"),
   new SlashCommandBuilder()
     .setName("fasttype")
     .setDescription("Start a continuous speed-typing contest"),
@@ -234,7 +234,21 @@ const commands = [
     .setName("stopgame")
     .setDescription("Stop the active game session in this channel"),
 
-  // 6. Moderation & Staff
+  // 6. Multiplayer Matchmaking Games (3+ Players Required)
+  new SlashCommandBuilder()
+    .setName("math")
+    .setDescription("Start a 3+ player Math Rush target battle"),
+  new SlashCommandBuilder()
+    .setName("hangman")
+    .setDescription("Start a 3+ player Cyber Hangman with decaying prize pot"),
+  new SlashCommandBuilder()
+    .setName("anagram")
+    .setDescription("Start a 3+ player Quick-Fire Anagram Duel"),
+  new SlashCommandBuilder()
+    .setName("guess")
+    .setDescription("Start a 3+ player Guess The Number (1-100) challenge"),
+
+  // 7. Moderation & Staff
   new SlashCommandBuilder()
     .setName("report")
     .setDescription(
@@ -253,7 +267,7 @@ const commands = [
         .setRequired(false),
     ),
 
-  // 7. Nitro Mimic Command
+  // 8. Nitro Mimic Command
   new SlashCommandBuilder()
     .setName("nitro")
     .setDescription(
@@ -267,7 +281,7 @@ const commands = [
         .setRequired(true),
     ),
 
-  // 8. Connect web command
+  // 9. Connect Web Command
   new SlashCommandBuilder()
     .setName("connectweb")
     .setDescription("Connect your Discord with your ATX Website account")
@@ -275,7 +289,6 @@ const commands = [
       opt
         .setName("code")
         .setDescription("6-digit verification code from your website profile")
-        .setAutocomplete(true)
         .setRequired(true),
     ),
 ].map((c) => c.toJSON());
