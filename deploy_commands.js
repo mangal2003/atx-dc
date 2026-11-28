@@ -196,9 +196,7 @@ const commands = [
     .addUserOption((opt) =>
       opt
         .setName("target")
-        .setDescription(
-          "The user making or needing the excuse (defaults to yourself)",
-        )
+        .setDescription("The user making or needing the excuse")
         .setRequired(false),
     ),
   new SlashCommandBuilder()
@@ -234,19 +232,16 @@ const commands = [
     .setName("stopgame")
     .setDescription("Stop the active game session in this channel"),
 
-  // 6. Multiplayer Matchmaking Games (3+ Players Required)
+  // 6. Multiplayer Matchmaking Games
   new SlashCommandBuilder()
     .setName("math")
-    .setDescription("Start a 3+ player Math Rush target battle"),
-  new SlashCommandBuilder()
-    .setName("hangman")
-    .setDescription("Start a 3+ player Cyber Hangman with decaying prize pot"),
+    .setDescription("Start a Math Rush target equation battle"),
   new SlashCommandBuilder()
     .setName("anagram")
-    .setDescription("Start a 3+ player Quick-Fire Anagram Duel"),
+    .setDescription("Start a Quick-Fire Anagram Duel"),
   new SlashCommandBuilder()
     .setName("guess")
-    .setDescription("Start a 3+ player Guess The Number (1-100) challenge"),
+    .setDescription("Start a Guess The Number (1-100) challenge"),
 
   // 7. Moderation & Staff
   new SlashCommandBuilder()
@@ -267,18 +262,17 @@ const commands = [
         .setRequired(false),
     ),
 
+  //  8 (Nitro Mimic Command)
   // 8. Nitro Mimic Command
   new SlashCommandBuilder()
     .setName("nitro")
-    .setDescription(
-      "Send messages with ATX custom emojis even without Discord Nitro!",
-    )
+    .setDescription("Send messages with custom emojis without Discord Nitro!")
     .addStringOption((opt) =>
       opt
-        .setName("theme")
-        .setDescription("Select an emoji category (flirt, roast, aura, etc.)")
+        .setName("category")
+        .setDescription("Browse a category or flip through ALL emojis")
         .setAutocomplete(true)
-        .setRequired(true),
+        .setRequired(false),
     ),
 
   // 9. Connect Web Command

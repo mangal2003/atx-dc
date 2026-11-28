@@ -2,14 +2,16 @@
 const {
   ActionRowBuilder,
   StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   PermissionFlagsBits,
-  ComponentType,
   MessageFlags,
 } = require("discord.js");
 
 const webhookCache = new Map(); // channelId -> Webhook
 
 const THEMES = [
+  { name: "🌐 ALL Emojis", value: "all", keywords: [] },
   {
     name: "💘 Flirt/Rizz",
     value: "flirt",
@@ -105,9 +107,7 @@ const THEMES = [
 
 async function getOrCreateWebhook(channel, client) {
   try {
-    if (webhookCache.has(channel.id)) {
-      return webhookCache.get(channel.id);
-    }
+    if (webhookCache.has(channel.id)) return webhookCache.get(channel.id);
 
     const me = channel.guild.members.me;
     if (
@@ -141,24 +141,38 @@ async function getOrCreateWebhook(channel, client) {
   }
 }
 
+function getAllAvailableEmojis(client, guild) {
+  const appEmojis = Array.from(
+    client.application?.emojis?.cache?.values() || [],
+  );
+  const guildEmojis = guild
+    ? Array.from(guild.emojis?.cache?.values() || [])
+    : [];
+
+  const map = new Map();
+  for (const e of [...appEmojis, ...guildEmojis]) {
+    map.set(e.id, e);
+  }
+  return Array.from(map.values());
+}
+
 function registerNitroMimic(client) {
-  // 1. Autocomplete for Theme Option
+  // 1. Autocomplete for Category
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isAutocomplete()) return;
     if (interaction.commandName !== "nitro") return;
 
     try {
       const focusedOption = interaction.options.getFocused(true);
-
-      if (focusedOption.name === "theme") {
-        const query = (focusedOption.value || "").toLowerCase();
+      if (focusedOption.name === "category" || focusedOption.name === "theme") {
+        const query = (focusedOption.value || "").toLowerCase().trim();
         const filtered = THEMES.filter(
           (t) =>
             t.name.toLowerCase().includes(query) ||
             t.value.toLowerCase().includes(query),
         ).slice(0, 25);
 
-        await interaction.respond(
+        return await interaction.respond(
           filtered.map((t) => ({ name: t.name, value: t.value })),
         );
       }
@@ -167,7 +181,7 @@ function registerNitroMimic(client) {
     }
   });
 
-  // 2. Slash Command Execution
+  // 2. Slash Command Execution with Cross-Page Cart System
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== "nitro") return;
@@ -175,144 +189,220 @@ function registerNitroMimic(client) {
     try {
       const statement =
         interaction.options.getString("statement")?.trim() || "";
-      const themeKey = interaction.options.getString("theme") || "general";
+      const selectedCategory =
+        interaction.options.getString("category") ||
+        interaction.options.getString("theme") ||
+        "all";
 
       const webhook = await getOrCreateWebhook(interaction.channel, client);
       if (!webhook) {
-        const noPermMsg = {
+        return await interaction.reply({
           content:
-            "⚠️ I need `Manage Webhooks` permission in this channel to send your custom emoji message!",
+            "⚠️ I need `Manage Webhooks` permission in this channel to send custom emojis for you!",
           flags: [MessageFlags.Ephemeral],
-        };
-        if (interaction.deferred || interaction.replied) {
-          return await interaction.editReply(noPermMsg);
-        }
-        return await interaction.reply(noPermMsg);
+        });
       }
 
-      // Filter application emojis matching selected theme
-      const themeConfig = THEMES.find((t) => t.value === themeKey) || THEMES[0];
-      const appEmojis = Array.from(
-        client.application?.emojis?.cache?.values() || [],
-      );
+      const allEmojis = getAllAvailableEmojis(client, interaction.guild);
+      let matchedEmojis = [];
 
-      let matched = appEmojis.filter((e) =>
-        themeConfig.keywords.some((kw) => e.name.toLowerCase().includes(kw)),
-      );
-
-      if (matched.length === 0) matched = appEmojis;
-      const emojiChoices = matched.slice(0, 25);
-
-      if (emojiChoices.length === 0) {
-        const noEmojisMsg = {
-          content:
-            "⚠️ No application emojis are loaded yet! Please wait a moment and try again.",
-          flags: [MessageFlags.Ephemeral],
-        };
-        if (interaction.deferred || interaction.replied) {
-          return await interaction.editReply(noEmojisMsg);
-        }
-        return await interaction.reply(noEmojisMsg);
+      if (selectedCategory === "all") {
+        matchedEmojis = allEmojis;
+      } else {
+        const themeConfig =
+          THEMES.find((t) => t.value === selectedCategory) || THEMES[0];
+        matchedEmojis = allEmojis.filter((e) =>
+          themeConfig.keywords.some((kw) => e.name.toLowerCase().includes(kw)),
+        );
+        if (matchedEmojis.length === 0) matchedEmojis = allEmojis;
       }
 
-      // Build the select menu with real emoji icons
-      const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId(`nitro_pick_${interaction.id}`)
-        .setPlaceholder("Select up to 3 emojis to send...")
-        .setMinValues(1)
-        .setMaxValues(Math.min(3, emojiChoices.length))
-        .addOptions(
-          emojiChoices.map((e) => ({
-            label: e.name.slice(0, 50),
-            value: e.toString(),
-            emoji: { id: e.id, name: e.name, animated: Boolean(e.animated) },
-          })),
+      if (matchedEmojis.length === 0) {
+        return await interaction.reply({
+          content: "⚠️ No emojis are currently available in the bot cache!",
+          flags: [MessageFlags.Ephemeral],
+        });
+      }
+
+      const PAGE_SIZE = 25;
+      const totalPages = Math.ceil(matchedEmojis.length / PAGE_SIZE);
+      let currentPage = 0;
+      const MAX_TOTAL_EMOJIS = 5;
+      const basket = []; // Preserves emojis chosen across different pages!
+
+      // Generator for UI state
+      const generatePagePayload = (page) => {
+        const start = page * PAGE_SIZE;
+        const currentSlice = matchedEmojis.slice(start, start + PAGE_SIZE);
+
+        const remainingAllowed = MAX_TOTAL_EMOJIS - basket.length;
+        const maxPickOnThisPage = Math.min(
+          Math.max(1, remainingAllowed),
+          currentSlice.length,
         );
 
-      const row = new ActionRowBuilder().addComponents(selectMenu);
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId(`nitro_select_${interaction.id}`)
+          .setPlaceholder(
+            remainingAllowed > 0
+              ? `Select emojis from this page (${basket.length}/${MAX_TOTAL_EMOJIS} chosen)...`
+              : "Cart full (5/5). Click 'Send Emojis' to dispatch!",
+          )
+          .setMinValues(1)
+          .setMaxValues(maxPickOnThisPage)
+          .setDisabled(remainingAllowed <= 0)
+          .addOptions(
+            currentSlice.map((e) => ({
+              label: e.name.slice(0, 50),
+              value: e.toString(),
+              emoji: { id: e.id, name: e.name, animated: Boolean(e.animated) },
+            })),
+          );
 
-      const promptText = statement
-        ? `### Pick emojis to accompany your message:\n> *"${statement}"*`
-        : `### Pick emojis to send in chat:`;
+        const menuRow = new ActionRowBuilder().addComponents(selectMenu);
 
-      const payload = {
-        content: promptText,
-        components: [row],
-        flags: [MessageFlags.Ephemeral],
+        // Control Buttons
+        const buttonRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`nitro_prev_${interaction.id}`)
+            .setLabel("⬅ Prev")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page === 0),
+          new ButtonBuilder()
+            .setCustomId(`nitro_send_${interaction.id}`)
+            .setLabel(`Send Emojis 🚀 (${basket.length})`)
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(basket.length === 0),
+          new ButtonBuilder()
+            .setCustomId(`nitro_clear_${interaction.id}`)
+            .setLabel("Clear 🗑️")
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(basket.length === 0),
+          new ButtonBuilder()
+            .setCustomId(`nitro_next_${interaction.id}`)
+            .setLabel("Next ➡")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page >= totalPages - 1),
+        );
+
+        const basketPreview =
+          basket.length > 0 ? basket.join(" ") : "*None yet*";
+        const promptLines = [
+          statement ? `> *"${statement}"*\n` : "",
+          `**Selected Basket (${basket.length}/${MAX_TOTAL_EMOJIS}):** ${basketPreview}`,
+          `- # Page ${page + 1} of ${totalPages} • Pick emojis, flip pages, and click Send!`,
+        ].filter(Boolean);
+
+        return {
+          content: promptLines.join("\n"),
+          components: [menuRow, buttonRow],
+          flags: [MessageFlags.Ephemeral],
+        };
       };
 
-      // Safe acknowledgment handling (prevents DiscordAPIError[40060])
-      let promptMsg;
-      if (interaction.deferred || interaction.replied) {
-        promptMsg = await interaction.editReply(payload);
-      } else {
-        promptMsg = await interaction.reply({ ...payload, fetchReply: true });
-      }
-
-      const collector = promptMsg.createMessageComponentCollector({
-        componentType: ComponentType.StringSelect,
-        time: 60000,
+      const promptMsg = await interaction.reply({
+        ...generatePagePayload(currentPage),
+        fetchReply: true,
       });
 
-      collector.on("collect", async (selectInteraction) => {
-        if (selectInteraction.user.id !== interaction.user.id) return;
+      const collector = promptMsg.createMessageComponentCollector({
+        time: 120000,
+      });
 
-        const selectedEmojiTags = selectInteraction.values.join(" ");
-        const finalMessage = statement
-          ? `${statement} ${selectedEmojiTags}`
-          : selectedEmojiTags;
+      collector.on("collect", async (i) => {
+        if (i.user.id !== interaction.user.id) return;
 
-        const member = interaction.member;
-        const displayName =
-          member?.displayName ||
-          interaction.user.globalName ||
-          interaction.user.username;
-        const avatarURL = interaction.user.displayAvatarURL({ dynamic: true });
-
-        await webhook.send({
-          content: finalMessage,
-          username: displayName,
-          avatarURL: avatarURL,
-          allowedMentions: { parse: ["users", "roles"] },
-        });
-
-        const successPayload = {
-          content: "✅ **Emojis dispatched!**",
-          components: [],
-        };
-
-        if (selectInteraction.replied || selectInteraction.deferred) {
-          await selectInteraction.editReply(successPayload).catch(() => {});
-        } else {
-          await selectInteraction.update(successPayload).catch(() => {});
+        // 1. Next Page (Basket is preserved)
+        if (i.customId === `nitro_next_${interaction.id}`) {
+          if (currentPage < totalPages - 1) currentPage++;
+          return await i.update(generatePagePayload(currentPage));
         }
-        collector.stop("sent");
+
+        // 2. Previous Page (Basket is preserved)
+        if (i.customId === `nitro_prev_${interaction.id}`) {
+          if (currentPage > 0) currentPage--;
+          return await i.update(generatePagePayload(currentPage));
+        }
+
+        // 3. Clear Basket
+        if (i.customId === `nitro_clear_${interaction.id}`) {
+          basket.length = 0;
+          return await i.update(generatePagePayload(currentPage));
+        }
+
+        // 4. Accumulate Selected Emojis from current page
+        if (i.customId === `nitro_select_${interaction.id}`) {
+          for (const emojiTag of i.values) {
+            if (basket.length < MAX_TOTAL_EMOJIS) {
+              basket.push(emojiTag);
+            }
+          }
+          return await i.update(generatePagePayload(currentPage));
+        }
+
+        // 5. Send Basket
+        if (i.customId === `nitro_send_${interaction.id}`) {
+          const selectedEmojiTags = basket.join(" ");
+          const finalMessage = statement
+            ? `${statement} ${selectedEmojiTags}`
+            : selectedEmojiTags;
+
+          const member = interaction.member;
+          const displayName =
+            member?.displayName ||
+            interaction.user.globalName ||
+            interaction.user.username;
+          const avatarURL = interaction.user.displayAvatarURL({
+            dynamic: true,
+          });
+
+          await webhook.send({
+            content: finalMessage,
+            username: displayName,
+            avatarURL: avatarURL,
+            allowedMentions: { parse: ["users", "roles"] },
+          });
+
+          await i
+            .update({
+              content: `✅ **Dispatched ${basket.length} emojis to chat!**\n> ${selectedEmojiTags}`,
+              components: [],
+            })
+            .catch(() => {});
+
+          collector.stop("sent");
+        }
       });
     } catch (err) {
       console.error("[NITRO MIMIC] Execution error:", err);
     }
   });
 
-  // 3. Prefix fallback (!nitro or !nitro <statement>)
+  // 3. Prefix fallback
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
     if (!message.content.startsWith("!nitro")) return;
 
     try {
       const raw = message.content.slice(6).trim();
-
       const webhook = await getOrCreateWebhook(message.channel, client);
       if (!webhook) return;
 
       await message.delete().catch(() => {});
 
-      const appEmojis = Array.from(
-        client.application?.emojis?.cache?.values() || [],
-      );
-      const randomEmoji =
-        appEmojis.length > 0
-          ? appEmojis[Math.floor(Math.random() * appEmojis.length)].toString()
-          : "✨";
+      const allEmojis = getAllAvailableEmojis(client, message.guild);
+      let targetEmojis = [];
+
+      if (raw) {
+        const matches = allEmojis.filter((e) =>
+          e.name.toLowerCase().includes(raw.toLowerCase()),
+        );
+        targetEmojis = matches.slice(0, 3).map((e) => e.toString());
+      }
+
+      if (targetEmojis.length === 0) {
+        targetEmojis = allEmojis.slice(0, 3).map((e) => e.toString());
+      }
 
       const member = message.member;
       const displayName =
@@ -321,10 +411,8 @@ function registerNitroMimic(client) {
         message.author.username;
       const avatarURL = message.author.displayAvatarURL({ dynamic: true });
 
-      const finalMessage = raw ? `${raw} ${randomEmoji}` : randomEmoji;
-
       await webhook.send({
-        content: finalMessage,
+        content: targetEmojis.join(" "),
         username: displayName,
         avatarURL: avatarURL,
         files: message.attachments.map((a) => a.url),
@@ -335,7 +423,9 @@ function registerNitroMimic(client) {
     }
   });
 
-  console.log("[MODULE] Nitro Mimic with Interactive Emoji Select ready.");
+  console.log(
+    "[MODULE] Nitro Mimic with Cross-Page Cart & Multi-Select ready.",
+  );
 }
 
 module.exports = { registerNitroMimic };

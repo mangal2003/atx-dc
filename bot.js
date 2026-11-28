@@ -8,6 +8,7 @@ const {
   Partials,
   Events,
   MessageFlags,
+  PermissionsBitField,
 } = require("discord.js");
 
 // Services & Models
@@ -30,10 +31,16 @@ const {
 const {
   activeGames,
   activeLobbies,
+  buildRestartRow,
+  attachRestartCollector,
+  buildAnagramEmbed,
   launchNextRound,
   handleGameCommands,
 } = require("./modules/games");
-const { evaluateMathGuess } = require("./modules/gameEngines");
+const {
+  evaluateMathGuess,
+  isValidDictionaryWord,
+} = require("./modules/gameEngines");
 const { handleSocialCommands } = require("./modules/social");
 const { handleUtilityCommands } = require("./modules/utility");
 const { handleIdentityCommands } = require("./modules/identity");
@@ -105,7 +112,7 @@ async function executeCommand(ctx) {
           `> Web synchronization is strictly restricted to the official **ATX Family Discord Server**.`,
           ``,
           `Join the server to link your profile and sync your EP:`,
-          `👉 [**Join ATX Family Discord**](${ATX_INVITE_URL})`,
+          `<:handgunSigngun:1571805406177533952> [**Join ATX Family Discord**](${ATX_INVITE_URL})`,
           ``,
           `-# Once inside ATX Family, execute \`/connectweb code:<6-digits>\` in any chat channel.`,
         ].join("\n"),
@@ -301,16 +308,31 @@ client.on(Events.MessageCreate, async (message) => {
 
     // Emergency Stop
     if (lower === "!stopgame" || lower === "/stopgame") {
+      const hostId = game.startedBy || game.playerList?.[0];
+      const isAdmin =
+        message.member?.permissions?.has(
+          PermissionsBitField.Flags.Administrator,
+        ) ||
+        message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
+
+      if (hostId && hostId !== message.author.id && !isAdmin) {
+        return message.reply(
+          `### <:redcardpenalty:1571939410977620059> Access Denied\n> Only the game host (<@${hostId}>) or a Server Admin can stop this round!`,
+        );
+      }
+
       clearTimeout(game.timer);
-      if (game.interval) clearInterval(game.interval);
+      if (game.activeMsg) game.activeMsg.delete().catch(() => {});
       activeGames.delete(message.channel.id);
-      const reveal =
-        game.answer ||
-        game.word ||
-        game.secret ||
-        (game.target ? `Target: ${game.target}` : "N/A");
+
+      const reveal = game.solution
+        ? `${game.solution} = ${game.target}`
+        : game.answer ||
+          game.secret ||
+          (game.target ? `Target: ${game.target}` : "N/A");
+
       return message.reply(
-        `### <:idcDonotCare:1571805403786772500> Mini-game halted\n-# The solution was **\`${reveal}\`**`,
+        `### <:idcDonotCare:1571805403786772500> Mini-game halted by ${message.author}\n-# The solution was **\`${reveal}\`**`,
       );
     }
 
@@ -324,7 +346,7 @@ client.on(Events.MessageCreate, async (message) => {
           clearTimeout(game.timer);
           activeGames.delete(message.channel.id);
 
-          await message.react("🎯");
+          await message.react("<:dartTarget:1576106812229427240>" || "🎯");
           const updatedUser = await DiscordUser.findOneAndUpdate(
             { discordId: message.author.id },
             { $inc: { botBalance: 75, "gameStats.totalGamesPlayed": 1 } },
@@ -336,13 +358,20 @@ client.on(Events.MessageCreate, async (message) => {
             { $inc: { botBalance: 75 } },
           ).catch(() => {});
 
-          return message.reply(
-            `🎉 **BINGO!** ${message.author} guessed the exact number **\`${game.secret}\`**! \n💰 **+75 EP** credited! • New Bal: **${(updatedUser?.botBalance || 0).toLocaleString()} EP**`,
+          const winMsg = await message.reply({
+            content: `<a:gomapowerFire:1571908665399582852> **${message.author}!**  guessed the exact number **${game.secret}** \n<:moneyPaisaPurse:1571805482392227870> **+75 EP** credited! • New Bal: **${(updatedUser?.botBalance || 0).toLocaleString()} EP**`,
+            components: [buildRestartRow("guessnumber")],
+          });
+          return attachRestartCollector(
+            winMsg,
+            message.channel,
+            "guessnumber",
+            client,
           );
         } else if (guess < game.secret) {
-          await message.react("🔼");
+          await message.react("<:greenarrowup:1576128774309806281>" || "🔼");
         } else {
-          await message.react("🔽");
+          await message.react("<:redarrowdown:1576128771394642090>" || "🔽");
         }
       }
     }
@@ -366,56 +395,35 @@ client.on(Events.MessageCreate, async (message) => {
           { $inc: { botBalance: 75 } },
         ).catch(() => {});
 
-        return message.reply(
-          `🧠 **GENIUS!** ${message.author} correctly formed the equation: **\`${text} = ${game.target}\`**!\n💰 **+75 EP** credited! • New Bal: **${(updatedUser?.botBalance || 0).toLocaleString()} EP**`,
+        const winMsg = await message.reply({
+          content: `<:crownKingBoss:1571805491124764733> **${message.author}!** correctly formed the equation: **\`${text} = ${game.target}\`**!\n<:moneyPaisaPurse:1571805482392227870> **+75 EP** credited! • New Bal: **${(updatedUser?.botBalance || 0).toLocaleString()} EP**`,
+          components: [buildRestartRow("mathrush")],
+        });
+        return attachRestartCollector(
+          winMsg,
+          message.channel,
+          "mathrush",
+          client,
         );
       }
     }
 
-    // 3. Cyber Hangman
-    if (game.type === "hangman") {
-      const cleanGuess = text.toUpperCase().replace(/[^A-Z]/g, "");
-      if (cleanGuess === game.word) {
-        if (game.isSolving) return;
-        game.isSolving = true;
-        clearTimeout(game.timer);
-        if (game.interval) clearInterval(game.interval);
-        activeGames.delete(message.channel.id);
-
-        const wonPot = game.pot();
-        const updatedUser = await DiscordUser.findOneAndUpdate(
-          { discordId: message.author.id },
-          { $inc: { botBalance: wonPot, "gameStats.totalGamesPlayed": 1 } },
-          { returnDocument: "after" },
-        );
-
-        await UserProfile.findOneAndUpdate(
-          { userId: message.author.id },
-          { $inc: { botBalance: wonPot } },
-        ).catch(() => {});
-
-        return message.reply(
-          `🏆 **SOLVED!** ${message.author} cracked the word: **\`${game.word}\`** before all hints revealed!\n💰 Won **+${wonPot} EP** from the prize pot! • New Bal: **${(updatedUser?.botBalance || 0).toLocaleString()} EP**`,
-        );
-      }
-    }
-
-    // 4. Quick-Fire Anagram Duel
+    // 3. Quick-Fire Anagram Duel (With Auto-Delete & Clean Respawn)
     if (game.type === "anagram") {
       const cleanWord = text.toUpperCase().replace(/[^A-Z]/g, "");
       if (cleanWord.length >= game.minLen && !game.solvedWords.has(cleanWord)) {
         const pool = [...game.letters];
-        let valid = true;
+        let validLetters = true;
         for (const char of cleanWord) {
           const idx = pool.indexOf(char);
           if (idx === -1) {
-            valid = false;
+            validLetters = false;
             break;
           }
           pool.splice(idx, 1);
         }
 
-        if (valid) {
+        if (validLetters && isValidDictionaryWord(cleanWord)) {
           game.solvedWords.add(cleanWord);
           const reward =
             cleanWord.length >= 6 ? 80 : cleanWord.length === 5 ? 40 : 20;
@@ -434,15 +442,29 @@ client.on(Events.MessageCreate, async (message) => {
             (game.scores.get(message.author.id) || 0) + reward;
           game.scores.set(message.author.id, currentTotal);
 
-          await message.react("✨");
-          await message.reply(
-            `✅ Valid word: **${cleanWord}** (+${reward} EP)`,
+          await message.react("<:like:1572178511446151259>" || "✨");
+
+          // Delete the old sample embed from above in the chat
+          if (game.activeMsg) {
+            await game.activeMsg.delete().catch(() => {});
+          }
+
+          // Build acknowledgment banner and respawn the sample embed
+          const acknowledgment = `<a:approvedCorrect:1572188241245900890> **${message.author.username}** claimed **${cleanWord}** (+${reward} EP)!`;
+          const newEmbed = buildAnagramEmbed(
+            game.letters,
+            game.minLen,
+            acknowledgment,
+            Array.from(game.solvedWords),
           );
+
+          const newMsg = await message.channel.send({ embeds: [newEmbed] });
+          game.activeMsg = newMsg;
         }
       }
     }
 
-    // 5. Classic Continuous Single-Player Games (Unscramble, Fasttype, Quiz, Emojigame)
+    // 4. Continuous Single-Player Games
     if (["unscramble", "fasttype", "quiz", "emojigame"].includes(game.type)) {
       const cleanGuess = lower
         .replace(/[^a-z0-9\s]/g, "")
@@ -571,7 +593,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     if (commandName === "report") {
       const warning = await message.reply(
-        "🔒 **For total privacy & anonymity**, prefix `!report` is disabled in public channels.\nPlease use the slash command: **/report** (visible only to you).\n## DELETE YOUR MESSAGE ASAP <:redcardpenalty:1571939410977620059>",
+        "🔒 **For total privacy & anonymity**, prefix `!report` is disabled in public channels.\nPlease use the slash command: **/report** (visible only to you).\n### DELETE YOUR MESSAGE ASAP <:redcardpenalty:1571939410977620059>",
       );
       setTimeout(() => warning.delete().catch(() => {}), 6000);
       return;
